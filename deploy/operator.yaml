@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-test-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: deployment-test-operator
+  template:
+    metadata:
+      labels:
+        name: deployment-test-operator
+    spec:
+      containers:
+        - name: deployment-test-operator
+          image: quay.io/jlegrone/deployment-test-operator:v0.0.1
+          command:
+          - deployment-test-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
