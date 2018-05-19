@@ -3,6 +3,8 @@
 [![Operator Framework](https://img.shields.io/badge/Built%20With-Operator%20Framework-red.svg)](https://github.com/operator-framework/operator-sdk)
 [![Proof of Concept](https://img.shields.io/badge/Status-Proof%20of%20Concept-yellow.svg)](https://github.com/jlegrone/deployment-test-operator)
 
+[![CircleCI](https://circleci.com/gh/jlegrone/deployment-test-operator.svg?style=svg)](https://circleci.com/gh/jlegrone/deployment-test-operator)
+
 This project is currently a proof of concept.  The goal is to declaratively specify tests for kubernetes [deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) (and in the future potentially statefulsets), and to expose hooks for taking actions based on test results -- such as rolling back failed deployments, or promotion to higher environments.
 
 ## Usage
