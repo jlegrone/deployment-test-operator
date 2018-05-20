@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: nginx
   labels:
     app: nginx
   annotations:
-    k8s.jacob.work/deployment-test-name: nginx-deployment-test
+    k8s.jacob.work/deployment-test-name: curl
 spec:
   replicas: 1
   selector:

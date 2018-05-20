@@ -123,9 +123,9 @@ func processJob(job *batchv1.Job) error {
 }
 
 func notifyTestResult(job *batchv1.Job, succeeded bool) error {
-	deploymentName := job.Annotations["k8s.jacob.work/deployment-name"]
-	deploymentRevision := job.Annotations["k8s.jacob.work/deployment-revision"]
-	deploymentTestName := job.Annotations["k8s.jacob.work/deployment-test-name"]
+	deploymentName := job.Labels["k8s.jacob.work/test-deployment-name"]
+	deploymentRevision := job.Labels["k8s.jacob.work/test-deployment-revision"]
+	deploymentTestName := job.Labels["k8s.jacob.work/deployment-test-name"]
 	testStatusAnnotationKey := "k8s.jacob.work/deployment-test-status-revision-" + deploymentRevision
 
 	client, _, clientErr := k8sclient.GetResourceClient("apps/v1", "Deployment", job.Namespace)
@@ -210,15 +210,44 @@ func newDeploymentReference(deployment *appsv1.Deployment) v1.ObjectReference {
 
 func newDeploymentTestJob(cr *v1alpha1.DeploymentTest, target *appsv1.Deployment) *batchv1.Job {
 	deploymentRevision := target.Annotations["deployment.kubernetes.io/revision"]
-	labels := map[string]string{
-		"deployment-test": "true",
-	}
+	jobSpec := cr.Spec.JobTemplate
+
 	annotations := map[string]string{
-		"k8s.jacob.work/deployment-name":                 target.Name,
-		"k8s.jacob.work/deployment-revision":             deploymentRevision,
-		"k8s.jacob.work/deployment-test-name":            cr.Name,
 		"k8s.jacob.work/deployment-test-status-reported": "False",
 	}
+
+	labels := map[string]string{
+		"k8s.jacob.work/test-deployment-name":     target.Name,
+		"k8s.jacob.work/test-deployment-revision": deploymentRevision,
+		"k8s.jacob.work/deployment-test-name":     cr.Name,
+		"k8s.jacob.work/role":                     "deployment-test",
+	}
+	for key, val := range jobSpec.Template.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	jobSpec.Template.ObjectMeta.Labels = labels
+
+	var containers []v1.Container
+	for _, container := range jobSpec.Template.Spec.Containers {
+		container.Env = append(
+			container.Env,
+			v1.EnvVar{
+				Name:  "TEST_DEPLOYMENT_NAME",
+				Value: target.Name,
+			},
+			v1.EnvVar{
+				Name:  "TEST_DEPLOYMENT_REVISION",
+				Value: deploymentRevision,
+			},
+			v1.EnvVar{
+				Name:  "TEST_DEPLOYMENT_NAMESPACE",
+				Value: target.Namespace,
+			},
+		)
+		containers = append(containers, container)
+	}
+	jobSpec.Template.Spec.Containers = containers
+
 	return &batchv1.Job{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Job",
@@ -237,7 +266,7 @@ func newDeploymentTestJob(cr *v1alpha1.DeploymentTest, target *appsv1.Deployment
 			Labels:      labels,
 			Annotations: annotations,
 		},
-		Spec: cr.Spec.JobTemplate,
+		Spec: jobSpec,
 	}
 }
 

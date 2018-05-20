@@ -1,16 +1,20 @@
 apiVersion: deploy.k8s.jacob.work/v1alpha1
 kind: DeploymentTest
 metadata:
-  name: nginx-deployment-test
+  name: curl
 spec:
   job:
     backoffLimit: 3
     activeDeadlineSeconds: 60
     template:
       spec:
-        containers:
-        - name: curl
-          image: radial/busyboxplus:curl
-          # Curl the nginx service with a timeout of 5 seconds
-          command: ["curl",  "http://nginx-service", "--max-time", "5"]
         restartPolicy: Never
+        containers:
+          - name: curl
+            image: appropriate/curl:latest
+            # curl service (name must match the name of the deployment under test)
+            # with a timeout of 5 seconds
+            command:
+              - curl
+              - http://$(TEST_DEPLOYMENT_NAME).$(TEST_DEPLOYMENT_NAMESPACE).svc.cluster.local
+            args: ["--max-time", "5", "--silent"]
