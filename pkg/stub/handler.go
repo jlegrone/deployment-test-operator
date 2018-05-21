@@ -42,7 +42,11 @@ func deploymentHandler(deployment *appsv1.Deployment) error {
 	_, testsInitialized := deployment.Annotations[testStatusAnnotationKey]
 
 	if hasDeploymentTestAnnotation && hasDeploymentRevision && !testsInitialized {
-		client, _, clientErr := k8sclient.GetResourceClient("deploy.k8s.jacob.work/v1alpha1", "DeploymentTest", deployment.Namespace)
+		deploymentTestNamespace, hasDeploymentTestNamespaceAnnotation := deployment.Annotations["k8s.jacob.work/deployment-test-namespace"]
+		if !hasDeploymentTestNamespaceAnnotation {
+			deploymentTestNamespace = deployment.Namespace
+		}
+		client, _, clientErr := k8sclient.GetResourceClient("deploy.k8s.jacob.work/v1alpha1", "DeploymentTest", deploymentTestNamespace)
 		if clientErr != nil {
 			return clientErr
 		}
@@ -124,11 +128,12 @@ func processJob(job *batchv1.Job) error {
 
 func notifyTestResult(job *batchv1.Job, succeeded bool) error {
 	deploymentName := job.Labels["k8s.jacob.work/test-deployment-name"]
+	deploymentNamespace := job.Labels["k8s.jacob.work/test-deployment-namespace"]
 	deploymentRevision := job.Labels["k8s.jacob.work/test-deployment-revision"]
 	deploymentTestName := job.Labels["k8s.jacob.work/deployment-test-name"]
 	testStatusAnnotationKey := "k8s.jacob.work/deployment-test-status-revision-" + deploymentRevision
 
-	client, _, clientErr := k8sclient.GetResourceClient("apps/v1", "Deployment", job.Namespace)
+	client, _, clientErr := k8sclient.GetResourceClient("apps/v1", "Deployment", deploymentNamespace)
 	if clientErr != nil {
 		return clientErr
 	}
@@ -217,10 +222,11 @@ func newDeploymentTestJob(cr *v1alpha1.DeploymentTest, target *appsv1.Deployment
 	}
 
 	labels := map[string]string{
-		"k8s.jacob.work/test-deployment-name":     target.Name,
-		"k8s.jacob.work/test-deployment-revision": deploymentRevision,
-		"k8s.jacob.work/deployment-test-name":     cr.Name,
-		"k8s.jacob.work/role":                     "deployment-test",
+		"k8s.jacob.work/test-deployment-name":      target.Name,
+		"k8s.jacob.work/test-deployment-namespace": target.Namespace,
+		"k8s.jacob.work/test-deployment-revision":  deploymentRevision,
+		"k8s.jacob.work/deployment-test-name":      cr.Name,
+		"k8s.jacob.work/role":                      "deployment-test",
 	}
 	for key, val := range jobSpec.Template.ObjectMeta.Labels {
 		labels[key] = val
@@ -255,7 +261,7 @@ func newDeploymentTestJob(cr *v1alpha1.DeploymentTest, target *appsv1.Deployment
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprint(target.Name, "-test-revision-", deploymentRevision),
-			Namespace: cr.Namespace,
+			Namespace: target.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(cr, schema.GroupVersionKind{
 					Group:   v1alpha1.SchemeGroupVersion.Group,
