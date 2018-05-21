@@ -5,7 +5,7 @@ metadata:
   labels:
     app: nginx
   annotations:
-    k8s.jacob.work/deployment-test-name: curl
+    k8s.jacob.work/deployment-test-name: nginx
 spec:
   replicas: 1
   selector:
