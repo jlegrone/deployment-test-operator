@@ -1,0 +1,21 @@
+apiVersion: deploy.k8s.jacob.work/v1alpha1
+kind: DeploymentTest
+metadata:
+  name: curl
+  namespace: test
+spec:
+  job:
+    backoffLimit: 6
+    activeDeadlineSeconds: 60
+    template:
+      spec:
+        restartPolicy: Never
+        containers:
+          - name: curl
+            image: appropriate/curl:latest
+            # curl service (name must match the name of the deployment under test)
+            # with a timeout of 2 seconds
+            command:
+              - curl
+              - http://$(TEST_DEPLOYMENT_NAME).$(TEST_DEPLOYMENT_NAMESPACE).svc.cluster.local
+            args: ["--max-time", "2", "--silent", "--verbose"]
